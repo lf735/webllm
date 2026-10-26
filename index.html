@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Gemma 4 Studio - Interface web moderne et ultra-rapide pour exécuter les modèles Google Gemma 4 en local (WebGPU in-browser ou serveur Ollama)." />
+  <meta name="theme-color" content="#0a0d14" />
+  <title>Gemma 4 Studio — Exécution Locale & Privée</title>
+  
+  <!-- Google Fonts: Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app" class="app-container">
+    
+    <!-- Sidebar: Historique, Presets & Modèles -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-logo">
+            <span class="logo-sparkle">✦</span>
+            <div class="logo-glow"></div>
+          </div>
+          <div class="brand-info">
+            <h1 class="brand-title">Gemma 4 <span class="badge-version">Studio</span></h1>
+            <p class="brand-subtitle">IA Locale Privée</p>
+          </div>
+        </div>
+        <button id="btn-new-chat" class="btn-new-chat" title="Nouvelle conversation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span>Nouveau chat</span>
+        </button>
+      </div>
+
+      <!-- Sélecteur de Moteur d'exécution -->
+      <div class="engine-selector-card">
+        <label class="section-label">MOTEUR D'EXÉCUTION</label>
+        <div class="engine-toggle-group">
+          <button id="engine-webgpu-btn" class="engine-tab active" data-engine="webgpu">
+            <span class="engine-icon">⚡</span>
+            <span class="engine-name">WebGPU</span>
+            <span class="engine-tag">Navigateur</span>
+          </button>
+          <button id="engine-ollama-btn" class="engine-tab" data-engine="ollama">
+            <span class="engine-icon">🖥️</span>
+            <span class="engine-name">Ollama</span>
+            <span class="engine-tag">Localhost</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Liste des modèles selon le moteur actif -->
+      <div class="model-selection-card">
+        <div class="model-header-row">
+          <label class="section-label" for="model-select">MODÈLE GEMMA 4</label>
+          <span id="model-status-indicator" class="status-indicator ready" title="Moteur prêt">
+            <span class="status-dot"></span>
+            <span id="status-text">Prêt</span>
+          </span>
+        </div>
+        
+        <div class="select-wrapper">
+          <select id="model-select" class="custom-select">
+            <!-- Rempli dynamiquement par JS -->
+            <optgroup label="Gemma 4 Edge (In-Browser WebGPU)">
+              <option value="gemma-4-e2b-it" selected>Gemma 4 E2B Instruct (Ultra-léger)</option>
+              <option value="gemma-4-e4b-it">Gemma 4 E4B Instruct (Équilibré)</option>
+              <option value="gemma-2-2b-it-q4f32_1-MLC">Gemma 2 2B (MLC 4-bit)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Progress bar pour le téléchargement WebGPU -->
+        <div id="model-download-box" class="download-box hidden">
+          <div class="download-info">
+            <span id="download-status-label">Initialisation WebGPU...</span>
+            <span id="download-percentage">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="download-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+          <p id="download-details" class="download-details">Téléchargement et mise en cache des poids locaux...</p>
+        </div>
+      </div>
+
+      <!-- Liste des conversations -->
+      <div class="chat-history-section">
+        <label class="section-label">CONVERSATIONS RÉCENTES</label>
+        <div id="chat-history-list" class="chat-history-list">
+          <!-- Injecté par JavaScript -->
+        </div>
+      </div>
+
+      <!-- Pied de Sidebar / Contrôles système -->
+      <div class="sidebar-footer">
+        <button id="btn-open-settings" class="footer-btn" title="Paramètres d'inférence">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>Paramètres</span>
+        </button>
+        <button id="btn-export-chat" class="footer-btn" title="Exporter l'échange (Markdown)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Exporter</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Zone principale : Header, Chat & Input -->
+    <main class="main-content">
+      
+      <!-- Topbar / Performance HUD -->
+      <header class="top-nav">
+        <button id="btn-toggle-sidebar" class="btn-icon mobile-only" aria-label="Menu latéral">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+
+        <div class="active-model-badge">
+          <span class="active-pulse"></span>
+          <span id="active-model-name" class="model-badge-text">Gemma 4 E2B</span>
+          <span id="active-engine-badge" class="engine-pill">WebGPU Native</span>
+        </div>
+
+        <!-- Performance HUD en direct (vitesse, tokens, latence) -->
+        <div class="telemetry-hud">
+          <div class="hud-item" title="Vitesse de génération">
+            <span class="hud-label">DÉBIT</span>
+            <span id="hud-speed" class="hud-value">0.0 <small>tok/s</small></span>
+          </div>
+          <div class="hud-item" title="Temps jusqu'au premier token">
+            <span class="hud-label">TTFT</span>
+            <span id="hud-ttft" class="hud-value">-- <small>ms</small></span>
+          </div>
+          <div class="hud-item" title="Tokens totaux générés">
+            <span class="hud-label">TOKENS</span>
+            <span id="hud-tokens" class="hud-value">0</span>
+          </div>
+          <div class="hud-item" title="Confidentialité des données">
+            <span class="hud-badge-private">🔒 100% Hors-ligne</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Flux de conversation (Messages) -->
+      <div id="messages-container" class="messages-container">
+        <!-- Message de bienvenue si vide -->
+        <div id="welcome-hero" class="welcome-hero">
+          <div class="hero-sparkle-ring">
+            <div class="hero-icon">✦</div>
+          </div>
+          <h2 class="hero-title">Gemma 4 <span class="gradient-text">Local Studio</span></h2>
+          <p class="hero-desc">
+            Expérimentez les modèles <strong>Google Gemma 4</strong> directement sur votre machine, 
+            avec accélération matérielle WebGPU dans le navigateur ou via votre serveur Ollama local.
+          </p>
+
+          <!-- Suggestions rapides d'inspiration -->
+          <div class="quick-prompts-grid">
+            <button class="quick-prompt-card" data-prompt="Explique le fonctionnement du mécanisme de raisonnement thinking mode de Gemma 4 en détail.">
+              <span class="prompt-icon">🧠</span>
+              <div class="prompt-content">
+                <strong>Raisonnement avancé</strong>
+                <span>Comprendre le thinking mode de Gemma 4</span>
+              </div>
+            </button>
+            <button class="quick-prompt-card" data-prompt="Écris une fonction TypeScript moderne et optimisée pour effectuer un debounce avec typage strict et gestion des promesses.">
+              <span class="prompt-icon">⚡</span>
+              <div class="prompt-content">
+                <strong>Génération de code</strong>
+                <span>Fonction debounce TypeScript robuste</span>
+              </div>
+            </button>
+            <button class="quick-prompt-card" data-prompt="Compare les architectures des modèles Gemma 4 E2B, 12B et 26B MoE : avantages, VRAM requise et cas d'usage.">
+              <span class="prompt-icon">📊</span>
+              <div class="prompt-content">
+                <strong>Architecture Gemma 4</strong>
+                <span>Comparatif Dense vs MoE (Mixture of Experts)</span>
+              </div>
+            </button>
+            <button class="quick-prompt-card" data-prompt="Rédige une histoire de science-fiction courte sur une IA locale découverte dans une sonde spatiale abandonnée.">
+              <span class="prompt-icon">✨</span>
+              <div class="prompt-content">
+                <strong>Création narrative</strong>
+                <span>Scénario SF captivant et poétique</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barre d'aperçu d'image attachée (Multimodal) -->
+      <div id="attachment-preview-bar" class="attachment-bar hidden">
+        <div class="attachment-preview-wrapper">
+          <img id="attached-image-preview" src="" alt="Aperçu image multimodale" />
+          <button id="btn-remove-attachment" class="btn-remove-att" title="Supprimer l'image">✕</button>
+        </div>
+        <span class="attachment-name" id="attachment-name-label">image.png</span>
+      </div>
+
+      <!-- Zone de saisie flottante (Bottom Input) -->
+      <div class="input-section">
+        <form id="chat-form" class="chat-form">
+          <div class="input-card">
+            
+            <!-- Bouton d'attachement multimodal -->
+            <input type="file" id="image-file-input" accept="image/*" class="hidden" />
+            <button type="button" id="btn-attach-image" class="btn-input-action" title="Joindre une image (Multimodal Gemma 4)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </button>
+
+            <!-- Textarea auto-extensible -->
+            <textarea
+              id="user-prompt-input"
+              rows="1"
+              placeholder="Posez une question à Gemma 4, demandez du code ou analysez une image..."
+              autofocus
+            ></textarea>
+
+            <!-- Sélecteur de mode de raisonnement (Thinking Mode toggle) -->
+            <button type="button" id="btn-toggle-thinking" class="btn-pill-toggle active" title="Activer / Désactiver le mode raisonnement profond de Gemma 4">
+              <span class="toggle-dot"></span>
+              <span class="toggle-label">Thinking Mode</span>
+            </button>
+
+            <!-- Bouton d'envoi ou d'arrêt -->
+            <button type="submit" id="btn-send" class="btn-send" title="Envoyer le message (Entrée)">
+              <svg class="send-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+              <svg class="stop-icon hidden" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="input-footer-hints">
+            <span><strong>Entrée</strong> pour envoyer &bull; <strong>Maj + Entrée</strong> pour saut de ligne</span>
+            <span id="gpu-backend-info">WebGPU Hardware Acceleration : Activé</span>
+          </div>
+        </form>
+      </div>
+
+    </main>
+
+    <!-- Modal des Paramètres & Configuration Serveur -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">⚙️</span>
+            <h3>Paramètres d'inférence & Connexion</h3>
+          </div>
+          <button id="btn-close-modal" class="btn-close-modal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          
+          <!-- Configuration Ollama / Serveur Local -->
+          <div class="settings-group">
+            <h4 class="settings-group-title">Configuration Serveur Local</h4>
+            <div class="form-row">
+              <label for="ollama-url-input">URL de l'API Ollama / OpenAI</label>
+              <div class="input-with-button">
+                <input type="text" id="ollama-url-input" class="text-input" value="http://localhost:11434" placeholder="http://localhost:11434" />
+                <button type="button" id="btn-test-connection" class="btn-secondary">Tester</button>
+              </div>
+              <small class="field-hint">Compatible Ollama (port 11434), LM Studio (port 1234) ou llama.cpp server.</small>
+            </div>
+            <div id="connection-status-msg" class="connection-status-msg hidden"></div>
+          </div>
+
+          <!-- Hyperparamètres LLM -->
+          <div class="settings-group">
+            <h4 class="settings-group-title">Hyperparamètres Gemma 4</h4>
+            
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <label for="temperature-slider">Température (Créativité)</label>
+                <span id="temperature-val" class="slider-badge">0.7</span>
+              </div>
+              <input type="range" id="temperature-slider" min="0" max="1.5" step="0.05" value="0.7" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <label for="top-p-slider">Top P (Nucleus Sampling)</label>
+                <span id="top-p-val" class="slider-badge">0.9</span>
+              </div>
+              <input type="range" id="top-p-slider" min="0.1" max="1.0" step="0.05" value="0.9" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <label for="max-tokens-slider">Tokens Maximum par réponse</label>
+                <span id="max-tokens-val" class="slider-badge">2048</span>
+              </div>
+              <input type="range" id="max-tokens-slider" min="256" max="8192" step="256" value="2048" />
+            </div>
+          </div>
+
+          <!-- System Prompt Preset -->
+          <div class="settings-group">
+            <h4 class="settings-group-title">Instructions Système (System Prompt)</h4>
+            <select id="system-preset-select" class="custom-select mb-2">
+              <option value="default">Assistant Général Polyvalent (Gemma 4 standard)</option>
+              <option value="coder">Expert Programmation, Architecture & Algorithmes</option>
+              <option value="reasoner">Analyste Logique & Raisonnement Pas à Pas</option>
+              <option value="concise">Synthétique & Concis (Réponses directes)</option>
+            </select>
+            <textarea id="system-prompt-text" class="system-textarea" rows="3" placeholder="Définissez le rôle et le comportement du modèle..."></textarea>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-reset-settings" class="btn-text">Réinitialiser par défaut</button>
+          <button id="btn-save-settings" class="btn-primary">Enregistrer les réglages</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Script principal ES Module -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
